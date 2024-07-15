@@ -55,7 +55,7 @@ def main():
         [
             sg.Button("Prev"),
             sg.Button("Next"),
-           # sg.Button('Crop image'),
+            sg.Button('Crop image'),
             sg.Button('Filter image'),
             sg.Button('Count flies'),
             sg.Button('Export results')
@@ -67,6 +67,10 @@ def main():
     window = sg.Window("Image Viewer", elements, size=(1600, 1000))
     images = []
     location = 0
+    crop = 'FALSE'
+    image_name = []
+    fly_count = []
+    
     resultsTable = pd.DataFrame(
         columns=['image_name', 'fly_count'])
     while True:
@@ -92,7 +96,7 @@ def main():
             else:
                 location -= 1
             load_image(images[location], window)
-
+        file_name = os.path.basename(images[location])
         if event == 'Crop image':
             fromCenter = False
             im = cv2.imread(images[location])
@@ -106,9 +110,32 @@ def main():
             top_left_y = r[1]
             width = r[2]
             height = r[3]
+            
+           # crop_im = im[top_left_x:top_left_y, (top_left_x + width):(top_left_y + height) ]     
+            
+            
+            
+            crop_im = im_resized[int(r[1]):int(r[1]+r[3]),  
+                      int(r[0]):int(r[0]+r[2])]        
                                     
             print('coords', top_left_x, top_left_y, width, height)
             
+            
+            cv2.imwrite(os.path.join(values['file'], 'crop_img.png'), crop_im) 
+                       
+            crop_image = Image.open(os.path.join(values['file'], 'crop_img.png'))
+            crop_image.thumbnail((1440, 810))
+            crop_img = ImageTk.PhotoImage(crop_image)
+
+            
+            
+            
+            window["image"].update(data=crop_img)
+            
+            ## set a variable to make sure to load the correct image in filter image
+            
+            crop = 'TRUE'
+              
             ###########################################
             ## crop image and then update the window ##
             ###########################################
@@ -123,7 +150,15 @@ def main():
                 break
 
         if event == 'Filter image':
-            image = cv2.imread(images[location])
+        
+            if crop == 'TRUE':
+            
+                image = cv2.imread(os.path.join(values['file'], 'crop_img.png'))
+                                
+                
+            elif crop == 'FALSE':
+
+                image = cv2.imread(images[location])
 
             cv2.namedWindow('image', cv2.WINDOW_NORMAL)
 
@@ -182,6 +217,7 @@ def main():
                     
                 if cv2.getWindowProperty('image', cv2.WND_PROP_VISIBLE) < 1:
                     break
+            
             cv2.destroyWindow('image') 
             
             cv2.imwrite(os.path.join(values['file'], 'hsv_img.png'), result)
@@ -190,7 +226,10 @@ def main():
             hsv_image.thumbnail((1440, 810))
             hsv_img = ImageTk.PhotoImage(hsv_image)
             
-            window["hsv_im"].update(data=hsv_img)            
+            window["hsv_im"].update(data=hsv_img)
+            
+            print('image shown')
+                
             
 
 
@@ -218,17 +257,23 @@ def main():
             (cnt, hierarchy) = cv2.findContours( canny.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) 
             cv2.drawContours(image, cnt, -1, (0, 255, 0), 2) 
             
+            fly_nb = len(cnt)
             
             window["fly"].update(visible=True)
             window["fly"].update('Fly count:' + str(len(cnt)))            
-
-            
+       
             
             print(len(cnt))
         
 #            print(r)
-#            currentResults = pd.DataFrame({'file_name': file_name, 'top_left_x': [r[0]],
-#                                           'top_left_y': [r[1]], 'width': [r[2]], 'height': [r[3]]})
+            image_name.append(file_name)
+            fly_count.append(fly_nb)
+            
+            
+#            currentResults = pd.DataFrame({'image_name': [file_name], 'fly_count': [fly_nb]
+#                                          })
+                                          
+#            print(currentResults)
 #            print(currentResults)
 #            print(resultsTable)
 #            resultsTable = pd.concat(
@@ -238,10 +283,13 @@ def main():
             cv2.waitKey(2500)
 
         if event == "export results":
+        
+            resultsTable = pd.DataFrame({'image_name' : image_name, 'fly_count': fly_count }) 
 
-            resultsTable.to_csv('brood_regions.csv', sep=",", index=False)
+            resultsTable.to_csv('fly_count.csv', sep=",", index=False)
 
     window.close()
+
 
 
 if __name__ == "__main__":
