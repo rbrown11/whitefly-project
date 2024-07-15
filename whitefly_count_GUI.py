@@ -282,11 +282,12 @@ def main():
 
             cv2.waitKey(2500)
 
-        if event == "export results":
+        if event == "Export results":
         
             resultsTable = pd.DataFrame({'image_name' : image_name, 'fly_count': fly_count }) 
 
-            resultsTable.to_csv('fly_count.csv', sep=",", index=False)
+            resultsTable.to_csv(os.path.join(os.path.dirname(images[location]), 'fly_count.csv'), sep=",", index=False)
+
 
     window.close()
 
